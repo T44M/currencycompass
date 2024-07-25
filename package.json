@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@headlessui/react": "^2.1.2",
+    "@heroicons/react": "^2.1.5",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -12,19 +14,17 @@
     "react-dom": "^18.3.1",
     "react-i18next": "^15.0.0",
     "react-scripts": "5.0.1",
+    "tailwindcss": "^3.4.6",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+    "eject": "react-scripts eject",
+    "lint": "eslint . --ext .js,.jsx",
+    "lint:fix": "eslint src/**/*.js --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,json,css,scss,md}\""
   },
   "browserslist": {
     "production": [
@@ -39,13 +39,13 @@
     ]
   },
   "devDependencies": {
-    "@eslint/js": "^9.7.0",
-    "eslint": "^9.7.0",
+    "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
+    "eslint-config-react-app": "^7.0.1",
+    "eslint-plugin-jest": "^27.2.3",
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react": "^7.35.0",
     "globals": "^15.8.0",
-    "prettier": "^3.3.3",
-    "typescript-eslint": "^7.17.0"
+    "prettier": "^3.3.3"
   }
 }
