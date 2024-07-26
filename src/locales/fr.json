@@ -1,0 +1,11 @@
+{
+    "appName": "CurrencyCompass",
+    "currencyConverter": "Convertisseur de Devises",
+    "enterAmount": "Entrez le montant",
+    "convert": "Convertir",
+    "from": "De",
+    "to": "À",
+    "result": "Résultat",
+    "error": "Une erreur s'est produite. Veuillez réessayer."
+  }
+  

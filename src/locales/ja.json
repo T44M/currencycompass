@@ -1,0 +1,11 @@
+{
+    "appName": "CurrencyCompass",
+    "currencyConverter": "通貨コンバーター",
+    "enterAmount": "金額を入力してください",
+    "convert": "変換",
+    "from": "から",
+    "to": "へ",
+    "result": "結果",
+    "error": "エラーが発生しました。もう一度お試しください。"
+  }
+  

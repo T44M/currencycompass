@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const CurrencyConverter = () => {
+  const { t } = useTranslation();
   const [amount, setAmount] = useState('');
   const [fromCurrency, setFromCurrency] = useState('USD');
   const [toCurrency, setToCurrency] = useState('EUR');
@@ -12,13 +14,13 @@ const CurrencyConverter = () => {
 
   return (
     <div className="p-4">
-      <h2 className="text-xl mb-4">Currency Converter</h2>
+      <h2 className="text-xl mb-4">{t('currencyConverter')}</h2>
       <div className="flex flex-col space-y-4">
         <input
           type="number"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          placeholder="Enter amount"
+          placeholder={t('enterAmount')}
           className="p-2 border rounded"
         />
         <select
@@ -43,7 +45,7 @@ const CurrencyConverter = () => {
           onClick={handleConvert}
           className="bg-green-500 text-white p-2 rounded"
         >
-          Convert
+          {t('convert')}
         </button>
       </div>
     </div>

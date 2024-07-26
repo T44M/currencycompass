@@ -1,26 +1,26 @@
 module.exports = {
-    extends: ['react-app', 'react-app/jest', 'plugin:prettier/recommended'],
-    plugins: ['react', 'jest'],
-    env: {
-      browser: true,
-      es2021: true,
-      jest: true,
-      node: true,
+  extends: ['eslint:recommended', 'plugin:react/recommended', 'plugin:react/jsx-runtime', 'prettier'],
+  plugins: ['react'],
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    ecmaFeatures: {
+      jsx: true,
     },
-    parserOptions: {
-      ecmaFeatures: {
-        jsx: true,
-      },
-      ecmaVersion: 'latest',
-      sourceType: 'module',
+  },
+  rules: {
+    'react/react-in-jsx-scope': 'off',
+    'no-unused-vars': ['error', { 'varsIgnorePattern': 'React' }]
+  },
+  settings: {
+    react: {
+      version: 'detect',
     },
-    rules: {
-      'prettier/prettier': ['error', {}, { usePrettierrc: true }],
-      'react/react-in-jsx-scope': 'off',
-    },
-    settings: {
-      react: {
-        version: 'detect',
-      },
-    },
-  };
+  },
+  env: {
+    browser: true,
+    es2021: true,
+    node: true,
+    jest: true,
+  },
+};

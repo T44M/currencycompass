@@ -1,0 +1,10 @@
+{
+    "appName": "CurrencyCompass",
+    "currencyConverter": "Currency Converter",
+    "enterAmount": "Enter amount",
+    "convert": "Convert",
+    "from": "From",
+    "to": "To",
+    "result": "Result",
+    "error": "An error occurred. Please try again."
+  }
