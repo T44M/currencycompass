@@ -1,137 +1,290 @@
-import React, { useState, useEffect } from 'react';
-import { View, TextInput, Button, Text, StyleSheet, ScrollView } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  View, Text, TouchableOpacity, StyleSheet, 
+  SafeAreaView, TextInput, Modal, FlatList, Platform
+} from 'react-native';
+import { useFavorites } from '../FavoritesContext';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import CurrencyCache from '../utils/CurrencyCache';
 import { useTranslation } from 'react-i18next';
-import { MAIN_CURRENCIES } from '../constants/currencies';
-import { getExchangeRates } from '../utils/exchangeRateCache';
+import { useFocusEffect } from '@react-navigation/native';
 
-const CurrencyConverter = () => {
+const SUPPORTED_CURRENCIES = ['JPY', 'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'CHF', 'CNY', 'HKD', 'NZD'];
+
+const FixedCurrencyConverter = () => {
   const { t } = useTranslation();
-  const [amount, setAmount] = useState('');
-  const [baseCurrency, setBaseCurrency] = useState('USD');
-  const [rates, setRates] = useState({});
-  const [error, setError] = useState('');
+  const [amount, setAmount] = useState('10');
+  const [fromCurrency, setFromCurrency] = useState('JPY');
+  const [toCurrency, setToCurrency] = useState('USD');
+  const [convertedAmount, setConvertedAmount] = useState('0');
+  const [exchangeRates, setExchangeRates] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectingCurrency, setSelectingCurrency] = useState('from');
+  const { favorites, setFavorites, addFavorite, removeFavorite } = useFavorites(); // 修正部分
+  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
-    fetchRates();
-  }, [baseCurrency]);
+    fetchExchangeRates();
+    loadFavorites();
+  }, []);
 
-  const fetchRates = async () => {
+  useEffect(() => {
+    checkIfFavorite();
+  }, [fromCurrency, toCurrency, favorites]);
+
+  useEffect(() => {
+    handleConvert();
+  }, [amount, fromCurrency, toCurrency, exchangeRates]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadFavorites();
+    }, [])
+  );
+
+  const loadFavorites = useCallback(async () => {
     try {
-      const fetchedRates = await getExchangeRates(baseCurrency);
-      setRates(fetchedRates);
-      setError('');
+      const storedFavorites = await AsyncStorage.getItem('favoriteCurrencyPairs');
+      if (storedFavorites) {
+        setFavorites(JSON.parse(storedFavorites));
+      }
     } catch (error) {
-      setError(t('fetchRatesError'));
+      console.error('Error loading favorites:', error);
+    }
+  }, [setFavorites]);
+
+  const checkIfFavorite = () => {
+    setIsFavorite(favorites.some(pair => 
+      pair.fromCurrency === fromCurrency && pair.toCurrency === toCurrency
+    ));
+  };
+
+  const toggleFavorite = () => {
+    if (isFavorite) {
+      removeFavorite(fromCurrency, toCurrency);
+    } else {
+      addFavorite(fromCurrency, toCurrency);
+    }
+    setIsFavorite(!isFavorite);
+  };
+
+  const fetchExchangeRates = async () => {
+    try {
+      let rates = await CurrencyCache.getExchangeRates();
+      if (!rates) {
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const data = await response.json();
+        rates = data.rates;
+        await CurrencyCache.saveExchangeRates(rates);
+      }
+      setExchangeRates(rates);
+    } catch (error) {
+      console.error('Error fetching exchange rates:', error);
     }
   };
 
-  const handleAmountChange = (text) => {
-    if (text === '' || /^\d*\.?\d*$/.test(text)) {
-      setAmount(text);
-    }
+  const handleConvert = () => {
+    if (!exchangeRates) return;
+    const rate = exchangeRates[toCurrency] / exchangeRates[fromCurrency];
+    const result = (parseFloat(amount) * rate).toFixed(2);
+    setConvertedAmount(result.replace('.', ','));
   };
 
-  const convertAmount = (toCurrency) => {
-    if (!amount || isNaN(amount)) return '0.00';
-    const rate = rates[toCurrency] || 1;
-    return (parseFloat(amount) * rate).toFixed(2);
+  const handleSwapCurrencies = () => {
+    setFromCurrency(toCurrency);
+    setToCurrency(fromCurrency);
   };
+
+  const openCurrencyModal = (type) => {
+    setSelectingCurrency(type);
+    setModalVisible(true);
+  };
+
+  const selectCurrency = (currency) => {
+    if (selectingCurrency === 'from') {
+      setFromCurrency(currency);
+    } else {
+      setToCurrency(currency);
+    }
+    setModalVisible(false);
+  };
+
+  const getFlag = (currency) => {
+    const flags = {
+      JPY: '🇯🇵', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', 
+      AUD: '🇦🇺', CAD: '🇨🇦', CHF: '🇨🇭', CNY: '🇨🇳',
+      HKD: '🇭🇰', NZD: '🇳🇿'
+    };
+    return Platform.OS === 'web' ? flags[currency] || currency : flags[currency] || '🏳️';
+  };
+
+  const renderCurrencyItem = ({ item }) => (
+    <TouchableOpacity style={styles.currencyItem} onPress={() => selectCurrency(item)}>
+      <Text style={styles.flagEmoji}>{getFlag(item)}</Text>
+      <Text style={styles.currencyItemText}>{item}</Text>
+    </TouchableOpacity>
+  );
 
   return (
-    <ScrollView 
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      accessibilityLabel={t('currencyConverterScrollView')}
-    >
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={amount}
-          onChangeText={handleAmountChange}
-          placeholder={t('enterAmount')}
-          keyboardType="numeric"
-          accessibilityLabel={t('amountInputLabel')}
-          accessibilityHint={t('amountInputHint')}
-          importantForAccessibility="yes"
-        />
-        <Picker
-          selectedValue={baseCurrency}
-          style={styles.picker}
-          onValueChange={(itemValue) => setBaseCurrency(itemValue)}
-          accessibilityLabel={t('baseCurrencyPickerLabel')}
-          accessibilityHint={t('baseCurrencyPickerHint')}
-        >
-          {MAIN_CURRENCIES.map((currency) => (
-            <Picker.Item key={currency} label={t(currency)} value={currency} />
-          ))}
-        </Picker>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.conversionArea}>
+        <TouchableOpacity style={styles.currencyBox} onPress={() => openCurrencyModal('from')}>
+          <View style={styles.flagCurrencyContainer}>
+            <Text style={styles.flagEmoji}>{getFlag(fromCurrency)}</Text>
+            <Text style={styles.currency}>{fromCurrency}</Text>
+          </View>
+          <TextInput
+            style={styles.amount}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="numeric"
+            placeholder={t('enterAmount')}
+            placeholderTextColor="#666"
+          />
+        </TouchableOpacity>
+
+        <View style={styles.buttonGroup}>
+        <TouchableOpacity style={styles.swapButton} onPress={handleSwapCurrencies}>
+          <Ionicons name="swap-vertical" size={24} color="#007AFF" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.favoriteButton} onPress={toggleFavorite}>
+          <Ionicons name={isFavorite ? "star" : "star-outline"} size={24} color="#007AFF" />
+        </TouchableOpacity>
       </View>
-      <Button 
-        title={t('convert')} 
-        onPress={fetchRates}
-        accessibilityLabel={t('convertButtonLabel')}
-        accessibilityHint={t('convertButtonHint')}
-      />
-      {error ? (
-        <Text 
-          style={styles.error}
-          accessibilityLabel={t('errorMessageLabel')}
-        >
-          {error}
-        </Text>
-      ) : (
-        <View 
-          style={styles.resultContainer}
-          accessibilityLabel={t('resultContainerLabel')}
-        >
-          {MAIN_CURRENCIES.filter(c => c !== baseCurrency).map((currency) => (
-            <Text 
-              key={currency} 
-              style={styles.resultText}
-              accessibilityLabel={`${t('convertedAmountLabel')} ${t(currency)}`}
-            >
-              {`${convertAmount(currency)} ${t(currency)}`}
-            </Text>
-          ))}
+
+        <TouchableOpacity style={styles.currencyBox} onPress={() => openCurrencyModal('to')}>
+          <View style={styles.flagCurrencyContainer}>
+            <Text style={styles.flagEmoji}>{getFlag(toCurrency)}</Text>
+            <Text style={styles.currency}>{toCurrency}</Text>
+          </View>
+          <Text style={styles.amount}>{convertedAmount}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalView}>
+          <FlatList
+            data={SUPPORTED_CURRENCIES}
+            renderItem={renderCurrencyItem}
+            keyExtractor={item => item}
+          />
+          <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
         </View>
-      )}
-    </ScrollView>
+      </Modal>
+
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1C1C1E',
   },
-  contentContainer: {
+  conversionArea: {
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  input: {
-    flex: 2,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 10,
-    marginRight: 10,
-  },
-  picker: {
     flex: 1,
   },
-  resultContainer: {
-    marginTop: 20,
+  currencyBox: {
+    alignItems: 'center',
+    width: '100%',
+    marginVertical: 10,
   },
-  resultText: {
-    fontSize: 16,
-    marginBottom: 10,
+  flagCurrencyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
   },
-  error: {
-    color: 'red',
-    marginTop: 10,
+  flagEmoji: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  amount: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    width: '100%',
+  },
+  currency: {
+    fontSize: 18,
+    color: '#999',
+  },
+  rateInfo: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  rateText: {
+    color: '#999',
+    fontSize: 12,
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5
+  },
+  currencyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3A3A3C',
+    width: '100%',
+  },
+  currencyItemText: {
+    fontSize: 18,
+    color: '#fff',
+    marginLeft: 10,
+  },
+  closeButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2,
+    marginTop: 15,
+  },
+  closeButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  swapButton: {
+    backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 20,
+    marginHorizontal: 10,
+  },
+  favoriteButton: {
+    backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 20,
+    marginHorizontal: 10,
   },
 });
 
-export default CurrencyConverter;
+export default FixedCurrencyConverter;

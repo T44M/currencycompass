@@ -1,37 +1,55 @@
 import React from 'react';
-import { View, StyleSheet, SafeAreaView, Text } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n';
-import Header from './components/Header';
-import CurrencyConverter from './components/CurrencyConverter';
-import Footer from './components/Footer';
-import LanguageSwitcher from './components/LanguageSwitcher';
+import { FavoritesProvider } from './FavoritesContext';
 
-export default function App() {
-  console.log('App component rendering');
+import CurrencyConverter from './components/CurrencyConverter';
+import Calculator from './components/Calculator';
+import Favorites from './components/Favorites';
+
+const Tab = createBottomTabNavigator();
+
+const App = () => {
   return (
     <I18nextProvider i18n={i18n}>
-      <SafeAreaView style={styles.container}>
-        <Text>Debug: App is rendering</Text>
-        <Header />
-        <LanguageSwitcher />
-        <View style={styles.main}>
-          <CurrencyConverter />
-        </View>
-        <Footer />
-      </SafeAreaView>
+      <FavoritesProvider>
+        <NavigationContainer>
+          <Tab.Navigator
+            screenOptions={({ route }) => ({
+              tabBarIcon: ({ focused, color, size }) => {
+                let iconName;
+
+                if (route.name === 'Convert') {
+                  iconName = focused ? 'swap-horizontal' : 'swap-horizontal-outline';
+                } else if (route.name === 'Calculator') {
+                  iconName = focused ? 'calculator' : 'calculator-outline';
+                } else if (route.name === 'Favorites') {
+                  iconName = focused ? 'star' : 'star-outline';
+                }
+
+                return <Ionicons name={iconName} size={size} color={color} />;
+              },
+              tabBarActiveTintColor: '#007AFF',
+              tabBarInactiveTintColor: 'gray',
+              tabBarStyle: [
+                {
+                  display: 'flex'
+                },
+                null
+              ]
+            })}
+          >
+            <Tab.Screen name="Convert" component={CurrencyConverter} />
+            <Tab.Screen name="Calculator" component={Calculator} />
+            <Tab.Screen name="Favorites" component={Favorites} />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </FavoritesProvider>
     </I18nextProvider>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  main: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
+export default App;

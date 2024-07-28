@@ -1,0 +1,309 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Image, 
+  Modal, 
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView
+} from 'react-native';
+import { useTranslation } from 'react-i18next';
+import PropTypes from 'prop-types';
+import CurrencyCache from '../utils/CurrencyCache';
+
+const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF', 'CNY', 'HKD', 'NZD'];
+
+const CurrencyButton = ({ currency, onPress }) => (
+  <TouchableOpacity style={styles.currencyButton} onPress={() => onPress(currency)}>
+    <Text style={styles.currencyButtonText}>{currency}</Text>
+  </TouchableOpacity>
+);
+
+CurrencyButton.propTypes = {
+  currency: PropTypes.string.isRequired,
+  onPress: PropTypes.func.isRequired,
+};
+
+const CurrencyConverter = () => {
+  const { t } = useTranslation();
+  const [amount, setAmount] = useState('');
+  const [fromCurrency, setFromCurrency] = useState('USD');
+  const [toCurrency, setToCurrency] = useState('JPY');
+  const [result, setResult] = useState('');
+  const [exchangeRates, setExchangeRates] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectingCurrency, setSelectingCurrency] = useState('from');
+
+  useEffect(() => {
+    fetchExchangeRates();
+  }, []);
+
+  const fetchExchangeRates = async () => {
+    try {
+      let rates = await CurrencyCache.getExchangeRates();
+      
+      if (!rates) {
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const data = await response.json();
+        rates = data.rates;
+        await CurrencyCache.saveExchangeRates(rates);
+      }
+      
+      const filteredRates = Object.keys(rates)
+        .filter(currency => SUPPORTED_CURRENCIES.includes(currency))
+        .reduce((obj, key) => {
+          obj[key] = rates[key];
+          return obj;
+        }, {});
+
+      setExchangeRates(filteredRates);
+    } catch (error) {
+      console.error('Error fetching exchange rates:', error);
+    }
+  };
+
+  const convertCurrency = () => {
+    if (!amount || !exchangeRates) return;
+
+    const fromRate = exchangeRates[fromCurrency];
+    const toRate = exchangeRates[toCurrency];
+    const convertedAmount = (amount / fromRate) * toRate;
+
+    setResult(`${convertedAmount.toFixed(2)}`);
+  };
+
+  const openCurrencyModal = (type) => {
+    setSelectingCurrency(type);
+    setModalVisible(true);
+  };
+
+  const selectCurrency = (currency) => {
+    if (selectingCurrency === 'from') {
+      setFromCurrency(currency);
+    } else {
+      setToCurrency(currency);
+    }
+    setModalVisible(false);
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
+        <View style={styles.header}>
+          <Image
+            source={{ uri: '/api/placeholder/150/50' }}
+            style={styles.logo}
+          />
+          <Text style={styles.title}>{t('currencyCompass')}</Text>
+        </View>
+        
+        <View style={styles.converterContainer}>
+          <TouchableOpacity 
+            style={styles.currencySelector}
+            onPress={() => openCurrencyModal('from')}
+          >
+            <Text style={styles.currencyText}>{fromCurrency}</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.switchButton} onPress={() => {
+            setFromCurrency(toCurrency);
+            setToCurrency(fromCurrency);
+          }}>
+            <Text style={styles.switchButtonText}>⇄</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.currencySelector}
+            onPress={() => openCurrencyModal('to')}
+          >
+            <Text style={styles.currencyText}>{toCurrency}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="numeric"
+            placeholder={t('enterAmount')}
+            placeholderTextColor="#888"
+          />
+        </View>
+
+        <TouchableOpacity style={styles.convertButton} onPress={convertCurrency}>
+          <Text style={styles.convertButtonText}>{t('convert')}</Text>
+        </TouchableOpacity>
+
+        {result !== '' && (
+          <View style={styles.resultContainer}>
+            <Text style={styles.resultText}>{`${amount} ${fromCurrency} = ${result} ${toCurrency}`}</Text>
+          </View>
+        )}
+
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                {selectingCurrency === 'from' ? t('selectFromCurrency') : t('selectToCurrency')}
+              </Text>
+              <FlatList
+                data={SUPPORTED_CURRENCIES}
+                renderItem={({ item }) => (
+                  <CurrencyButton currency={item} onPress={selectCurrency} />
+                )}
+                keyExtractor={(item) => item}
+              />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.closeButtonText}>{t('close')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f0f0f0',
+  },
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logo: {
+    width: 40,
+    height: 40,
+    marginRight: 10,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  converterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  currencySelector: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  switchButton: {
+    padding: 10,
+    marginHorizontal: 10,
+  },
+  switchButtonText: {
+    fontSize: 24,
+    color: '#007AFF',
+  },
+  currencyText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  inputContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 20,
+  },
+  input: {
+    height: 50,
+    fontSize: 18,
+    color: '#333',
+  },
+  convertButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 15,
+    borderRadius: 8,
+  },
+  convertButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  resultContainer: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+  },
+  resultText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    textAlign: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  currencyButton: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  currencyButtonText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  closeButton: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#007AFF',
+    borderRadius: 5,
+  },
+  closeButtonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+});
+
+export default CurrencyConverter;
