@@ -3,12 +3,13 @@ import {
   View, Text, TouchableOpacity, StyleSheet, 
   SafeAreaView, TextInput, Modal, FlatList, Platform
 } from 'react-native';
-import { useFavorites } from '../FavoritesContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CurrencyCache from '../utils/CurrencyCache';
 import { useTranslation } from 'react-i18next';
+import { useFavorites } from '../FavoritesContext';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const SUPPORTED_CURRENCIES = ['JPY', 'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'CHF', 'CNY', 'HKD', 'NZD'];
 
@@ -54,11 +55,12 @@ const FixedCurrencyConverter = () => {
     }
   }, [setFavorites]);
 
-  const checkIfFavorite = () => {
-    setIsFavorite(favorites.some(pair => 
+  const checkIfFavorite = useCallback(() => {
+    const isFav = favorites.some(pair => 
       pair.fromCurrency === fromCurrency && pair.toCurrency === toCurrency
-    ));
-  };
+    );
+    setIsFavorite(isFav);
+  }, [favorites, fromCurrency, toCurrency]);
 
   const toggleFavorite = () => {
     if (isFavorite) {
@@ -128,39 +130,55 @@ const FixedCurrencyConverter = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.conversionArea}>
-        <TouchableOpacity style={styles.currencyBox} onPress={() => openCurrencyModal('from')}>
-          <View style={styles.flagCurrencyContainer}>
-            <Text style={styles.flagEmoji}>{getFlag(fromCurrency)}</Text>
-            <Text style={styles.currency}>{fromCurrency}</Text>
-          </View>
-          <TextInput
-            style={styles.amount}
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="numeric"
-            placeholder={t('enterAmount')}
-            placeholderTextColor="#666"
-          />
-        </TouchableOpacity>
+      <LinearGradient colors={['#1C1C1E', '#2C2C2E']} style={styles.gradient}>
+        <View style={styles.conversionArea}>
+          <TouchableOpacity style={styles.currencyBox} onPress={() => openCurrencyModal('from')}>
+            <View style={styles.flagCurrencyContainer}>
+              <Text style={styles.flagEmoji}>{getFlag(fromCurrency)}</Text>
+              <Text style={styles.currency}>{fromCurrency}</Text>
+            </View>
+            <TextInput
+              style={styles.amount}
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="numeric"
+              placeholder={t('enterAmount')}
+              placeholderTextColor="#666"
+            />
+          </TouchableOpacity>
 
-        <View style={styles.buttonGroup}>
-        <TouchableOpacity style={styles.swapButton} onPress={handleSwapCurrencies}>
-          <Ionicons name="swap-vertical" size={24} color="#007AFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.favoriteButton} onPress={toggleFavorite}>
-          <Ionicons name={isFavorite ? "star" : "star-outline"} size={24} color="#007AFF" />
-        </TouchableOpacity>
-      </View>
-
-        <TouchableOpacity style={styles.currencyBox} onPress={() => openCurrencyModal('to')}>
-          <View style={styles.flagCurrencyContainer}>
-            <Text style={styles.flagEmoji}>{getFlag(toCurrency)}</Text>
-            <Text style={styles.currency}>{toCurrency}</Text>
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity style={styles.swapButton} onPress={handleSwapCurrencies}>
+              <LinearGradient colors={['#4a90e2', '#3498db']} style={styles.buttonGradient}>
+                <Ionicons name="swap-vertical" size={24} color="#FFFFFF" />
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.favoriteButton, isFavorite && styles.activeFavoriteButton]} 
+              onPress={toggleFavorite}
+            >
+              <LinearGradient 
+                colors={isFavorite ? ['#4a90e2', '#3498db'] : ['#FFFFFF', '#F0F0F0']} 
+                style={styles.buttonGradient}
+              >
+                <Ionicons 
+                  name={isFavorite ? "star" : "star-outline"} 
+                  size={24} 
+                  color={isFavorite ? "#FFFFFF" : "#007AFF"} 
+                />
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.amount}>{convertedAmount}</Text>
-        </TouchableOpacity>
-      </View>
+
+          <TouchableOpacity style={styles.currencyBox} onPress={() => openCurrencyModal('to')}>
+            <View style={styles.flagCurrencyContainer}>
+              <Text style={styles.flagEmoji}>{getFlag(toCurrency)}</Text>
+              <Text style={styles.currency}>{toCurrency}</Text>
+            </View>
+            <Text style={styles.amount}>{convertedAmount}</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       <Modal
         animationType="slide"
@@ -187,18 +205,23 @@ const FixedCurrencyConverter = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1C1C1E',
+  },
+  gradient: {
+    flex: 1,
+    padding: 20,
   },
   conversionArea: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
     flex: 1,
   },
   currencyBox: {
     alignItems: 'center',
     width: '100%',
     marginVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 15,
+    padding: 15,
   },
   flagCurrencyContainer: {
     flexDirection: 'row',
@@ -219,14 +242,6 @@ const styles = StyleSheet.create({
   currency: {
     fontSize: 18,
     color: '#999',
-  },
-  rateInfo: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  rateText: {
-    color: '#999',
-    fontSize: 12,
   },
   modalView: {
     margin: 20,
@@ -270,20 +285,25 @@ const styles = StyleSheet.create({
   },
   buttonGroup: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 20,
   },
   swapButton: {
+    padding: 15,
     backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 20,
-    marginHorizontal: 10,
+    borderRadius: 30,
+    marginRight: 10,
   },
   favoriteButton: {
+    padding: 15,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  activeFavoriteButton: {
     backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 20,
-    marginHorizontal: 10,
   },
 });
 

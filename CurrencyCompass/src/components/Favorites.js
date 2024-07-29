@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
@@ -34,30 +35,46 @@ const Favorites = () => {
   };
 
   const renderFavoriteItem = ({ item, index }) => (
-    <View style={styles.favoriteItem}>
-      <TouchableOpacity
-        style={styles.favoriteTextContainer}
-        onPress={() => navigation.navigate('Convert', { fromCurrency: item.fromCurrency, toCurrency: item.toCurrency })}
+    <TouchableOpacity
+      style={styles.favoriteItem}
+      onPress={() => navigation.navigate('Convert', { fromCurrency: item.fromCurrency, toCurrency: item.toCurrency })}
+    >
+      <LinearGradient
+        colors={['#3498db', '#2980b9']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.gradientBackground}
       >
-        <Text style={styles.favoriteText}>{item.fromCurrency} → {item.toCurrency}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => removeFavorite(index)}>
-        <Ionicons name="close-circle" size={24} color="#FF3B30" />
-      </TouchableOpacity>
-    </View>
+        <View style={styles.favoriteContent}>
+          <Text style={styles.favoriteText}>{item.fromCurrency} → {item.toCurrency}</Text>
+          <TouchableOpacity onPress={() => removeFavorite(index)} style={styles.removeButton}>
+            <Ionicons name="close-circle" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Favorite Currency Pairs</Text>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.header}>
+        <Text style={styles.title}>Favorite Pairs</Text>
+        <View style={styles.titleUnderline} />
+      </View>
       {favorites.length > 0 ? (
         <FlatList
           data={favorites}
           renderItem={renderFavoriteItem}
           keyExtractor={(item, index) => index.toString()}
+          contentContainerStyle={styles.listContainer}
         />
       ) : (
-        <Text style={styles.emptyText}>No favorite currency pairs yet.</Text>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="star-outline" size={60} color="#666" />
+          <Text style={styles.emptyText}>No favorite currency pairs yet.</Text>
+          <Text style={styles.emptySubText}>Add some from the converter!</Text>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -67,34 +84,67 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1C1C1E',
-    padding: 20,
+  },
+  header: {
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 20,
+    marginBottom: 5,
+  },
+  titleUnderline: {
+    width: 50,
+    height: 3,
+    backgroundColor: '#3498db',
+    borderRadius: 2,
+  },
+  listContainer: {
+    padding: 20,
   },
   favoriteItem: {
+    marginBottom: 15,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  gradientBackground: {
+    borderRadius: 10,
+  },
+  favoriteContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#2C2C2E',
     padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  favoriteTextContainer: {
-    flex: 1,
   },
   favoriteText: {
     color: '#FFFFFF',
     fontSize: 18,
+    fontWeight: '600',
+  },
+  removeButton: {
+    padding: 5,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyText: {
     color: '#999999',
+    fontSize: 18,
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  emptySubText: {
+    color: '#666666',
     fontSize: 16,
     textAlign: 'center',
+    marginTop: 10,
   },
 });
 

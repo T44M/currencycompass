@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import PropTypes from 'prop-types';
 
 const FavoritesContext = createContext();
 
@@ -45,10 +46,14 @@ export const FavoritesProvider = ({ children }) => {
   };
 
   return (
-    <FavoritesContext.Provider value={{ favorites, addFavorite, removeFavorite }}>
+    <FavoritesContext.Provider value={{ favorites, addFavorite, removeFavorite, loadFavorites }}>
       {children}
     </FavoritesContext.Provider>
   );
+};
+
+FavoritesProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export const useFavorites = () => useContext(FavoritesContext);
