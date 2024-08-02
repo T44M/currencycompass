@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   View, Text, TouchableOpacity, StyleSheet, 
   SafeAreaView, TextInput, Modal, FlatList, Platform
@@ -9,7 +9,6 @@ import CurrencyCache from '../utils/CurrencyCache';
 import { useTranslation } from 'react-i18next';
 import { useFavorites } from '../FavoritesContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const SUPPORTED_CURRENCIES = ['JPY', 'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'CHF', 'CNY', 'HKD', 'NZD'];
 
@@ -22,7 +21,7 @@ const FixedCurrencyConverter = () => {
   const [exchangeRates, setExchangeRates] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectingCurrency, setSelectingCurrency] = useState('from');
-  const { favorites, setFavorites, addFavorite, removeFavorite } = useFavorites(); // 修正部分
+  const { favorites, setFavorites, addFavorite, removeFavorite } = useFavorites();
   const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
@@ -62,16 +61,16 @@ const FixedCurrencyConverter = () => {
     setIsFavorite(isFav);
   }, [favorites, fromCurrency, toCurrency]);
 
-  const toggleFavorite = () => {
+  const toggleFavorite = useCallback(() => {
     if (isFavorite) {
       removeFavorite(fromCurrency, toCurrency);
     } else {
       addFavorite(fromCurrency, toCurrency);
     }
     setIsFavorite(!isFavorite);
-  };
+  }, [isFavorite, fromCurrency, toCurrency, addFavorite, removeFavorite]);
 
-  const fetchExchangeRates = async () => {
+  const fetchExchangeRates = useCallback(async () => {
     try {
       let rates = await CurrencyCache.getExchangeRates();
       if (!rates) {
@@ -84,53 +83,53 @@ const FixedCurrencyConverter = () => {
     } catch (error) {
       console.error('Error fetching exchange rates:', error);
     }
-  };
+  }, []);
 
-  const handleConvert = () => {
+  const handleConvert = useCallback(() => {
     if (!exchangeRates) return;
     const rate = exchangeRates[toCurrency] / exchangeRates[fromCurrency];
     const result = (parseFloat(amount) * rate).toFixed(2);
     setConvertedAmount(result.replace('.', ','));
-  };
+  }, [exchangeRates, fromCurrency, toCurrency, amount]);
 
-  const handleSwapCurrencies = () => {
+  const handleSwapCurrencies = useCallback(() => {
     setFromCurrency(toCurrency);
     setToCurrency(fromCurrency);
-  };
+  }, [fromCurrency, toCurrency]);
 
-  const openCurrencyModal = (type) => {
+  const openCurrencyModal = useCallback((type) => {
     setSelectingCurrency(type);
     setModalVisible(true);
-  };
+  }, []);
 
-  const selectCurrency = (currency) => {
+  const selectCurrency = useCallback((currency) => {
     if (selectingCurrency === 'from') {
       setFromCurrency(currency);
     } else {
       setToCurrency(currency);
     }
     setModalVisible(false);
-  };
+  }, [selectingCurrency]);
 
-  const getFlag = (currency) => {
+  const getFlag = useMemo(() => (currency) => {
     const flags = {
       JPY: '🇯🇵', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', 
       AUD: '🇦🇺', CAD: '🇨🇦', CHF: '🇨🇭', CNY: '🇨🇳',
       HKD: '🇭🇰', NZD: '🇳🇿'
     };
     return Platform.OS === 'web' ? flags[currency] || currency : flags[currency] || '🏳️';
-  };
+  }, []);
 
-  const renderCurrencyItem = ({ item }) => (
+  const renderCurrencyItem = useCallback(({ item }) => (
     <TouchableOpacity style={styles.currencyItem} onPress={() => selectCurrency(item)}>
       <Text style={styles.flagEmoji}>{getFlag(item)}</Text>
       <Text style={styles.currencyItemText}>{item}</Text>
     </TouchableOpacity>
-  );
+  ), [getFlag, selectCurrency]);
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#1C1C1E', '#2C2C2E']} style={styles.gradient}>
+      <View style={styles.gradient}>
         <View style={styles.conversionArea}>
           <TouchableOpacity style={styles.currencyBox} onPress={() => openCurrencyModal('from')}>
             <View style={styles.flagCurrencyContainer}>
@@ -148,26 +147,15 @@ const FixedCurrencyConverter = () => {
           </TouchableOpacity>
 
           <View style={styles.buttonGroup}>
-            <TouchableOpacity style={styles.swapButton} onPress={handleSwapCurrencies}>
-              <LinearGradient colors={['#4a90e2', '#3498db']} style={styles.buttonGradient}>
-                <Ionicons name="swap-vertical" size={24} color="#FFFFFF" />
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.favoriteButton, isFavorite && styles.activeFavoriteButton]} 
-              onPress={toggleFavorite}
-            >
-              <LinearGradient 
-                colors={isFavorite ? ['#4a90e2', '#3498db'] : ['#FFFFFF', '#F0F0F0']} 
-                style={styles.buttonGradient}
-              >
-                <Ionicons 
-                  name={isFavorite ? "star" : "star-outline"} 
-                  size={24} 
-                  color={isFavorite ? "#FFFFFF" : "#007AFF"} 
-                />
-              </LinearGradient>
-            </TouchableOpacity>
+          <TouchableOpacity style={styles.swapButton} onPress={handleSwapCurrencies}>
+          <Ionicons name="swap-vertical" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.favoriteButton, isFavorite && styles.activeFavoriteButton]} 
+          onPress={toggleFavorite}
+        >
+          {isFavorite ? <Ionicons name="star" size={24} color="#FFFFFF" /> : <Ionicons name="star-outline" size={24} color="#007AFF" />}
+        </TouchableOpacity>
           </View>
 
           <TouchableOpacity style={styles.currencyBox} onPress={() => openCurrencyModal('to')}>
@@ -178,9 +166,8 @@ const FixedCurrencyConverter = () => {
             <Text style={styles.amount}>{convertedAmount}</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
 
-      <Modal
+        <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
@@ -197,18 +184,14 @@ const FixedCurrencyConverter = () => {
           </TouchableOpacity>
         </View>
       </Modal>
-
-    </SafeAreaView>
-  );
+    </View>
+  </SafeAreaView>
+);
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  gradient: {
-    flex: 1,
-    padding: 20,
   },
   conversionArea: {
     justifyContent: 'center',
@@ -305,6 +288,12 @@ const styles = StyleSheet.create({
   activeFavoriteButton: {
     backgroundColor: '#007AFF',
   },
+  gradient: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#1C1C1E',
+  },
+  
 });
 
 export default FixedCurrencyConverter;

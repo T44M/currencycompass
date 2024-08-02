@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
@@ -13,7 +12,7 @@ const Favorites = () => {
     loadFavorites();
   }, []);
 
-  const loadFavorites = async () => {
+  const loadFavorites = useCallback(async () => {
     try {
       const storedFavorites = await AsyncStorage.getItem('favoriteCurrencyPairs');
       if (storedFavorites) {
@@ -22,9 +21,9 @@ const Favorites = () => {
     } catch (error) {
       console.error('Error loading favorites:', error);
     }
-  };
+  }, []);
 
-  const removeFavorite = async (index) => {
+  const removeFavorite = useCallback(async (index) => {
     try {
       const updatedFavorites = favorites.filter((_, i) => i !== index);
       await AsyncStorage.setItem('favoriteCurrencyPairs', JSON.stringify(updatedFavorites));
@@ -32,28 +31,23 @@ const Favorites = () => {
     } catch (error) {
       console.error('Error removing favorite:', error);
     }
-  };
+  }, [favorites]);
 
-  const renderFavoriteItem = ({ item, index }) => (
+  const renderFavoriteItem = useCallback(({ item, index }) => (
     <TouchableOpacity
       style={styles.favoriteItem}
       onPress={() => navigation.navigate('Convert', { fromCurrency: item.fromCurrency, toCurrency: item.toCurrency })}
     >
-      <LinearGradient
-        colors={['#3498db', '#2980b9']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.gradientBackground}
-      >
-        <View style={styles.favoriteContent}>
-          <Text style={styles.favoriteText}>{item.fromCurrency} → {item.toCurrency}</Text>
-          <TouchableOpacity onPress={() => removeFavorite(index)} style={styles.removeButton}>
-            <Ionicons name="close-circle" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      <View style={styles.favoriteContent}>
+        <Text style={styles.favoriteText}>{item.fromCurrency} → {item.toCurrency}</Text>
+        <TouchableOpacity onPress={() => removeFavorite(index)} style={styles.removeButton}>
+          <Ionicons name="close-circle" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
-  );
+  ), [navigation, removeFavorite]);
+
+  const keyExtractor = useCallback((item, index) => index.toString(), []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -66,7 +60,7 @@ const Favorites = () => {
         <FlatList
           data={favorites}
           renderItem={renderFavoriteItem}
-          keyExtractor={(item, index) => index.toString()}
+          keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContainer}
         />
       ) : (
@@ -107,11 +101,6 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 20,
   },
-  favoriteItem: {
-    marginBottom: 15,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
   gradientBackground: {
     borderRadius: 10,
   },
@@ -146,6 +135,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
   },
+  favoriteItem: {
+    marginBottom: 15,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#3498db',
+  },
 });
 
-export default Favorites;
+export default React.memo(Favorites);

@@ -1,45 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Dimensions } from 'react-native';
-import { evaluate } from 'mathjs';
-import { LinearGradient } from 'expo-linear-gradient';
+import { create, all } from 'mathjs/number';
+
+const math = create(all);
+const limitedEvaluate = math.evaluate;
 
 const windowWidth = Dimensions.get('window').width;
+
+const BUTTONS = ['7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', '0', '.', '=', '+', 'C'];
 
 const ResponsiveCalculator = () => {
   const [display, setDisplay] = useState('0');
 
-  const handlePress = (value) => {
-    setDisplay(prev => {
-      if (prev === '0') {
-        return value;
-      } else {
-        return prev + value;
-      }
-    });
-  };
+  const handlePress = useCallback((value) => {
+    setDisplay(prev => prev === '0' ? value : prev + value);
+  }, []);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     setDisplay('0');
-  };
+  }, []);
 
-  const handleCalculate = () => {
+  const handleCalculate = useCallback(() => {
     try {
-      const result = evaluate(display);
+      const result = limitedEvaluate(display);
       setDisplay(result.toString());
     } catch (error) {
       setDisplay('Error');
     }
-  };
+  }, [display]);
 
-  const buttons = ['7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', '0', '.', '=', '+', 'C'];
-
-  const renderButton = (item) => (
+  const renderButton = useCallback((item) => (
     <TouchableOpacity
       key={item}
       style={[
         styles.button,
-        item === '=' ? styles.equalButton : null,
-        item === 'C' ? styles.clearButton : null
+        item === '=' && styles.equalButton,
+        item === 'C' && styles.clearButton
       ]}
       onPress={() => {
         if (item === '=') handleCalculate();
@@ -47,14 +43,14 @@ const ResponsiveCalculator = () => {
         else handlePress(item);
       }}
     >
-      <LinearGradient
-        colors={item === '=' ? ['#4a90e2', '#3498db'] : ['#3a3a3c', '#2c2c2e']}
-        style={styles.buttonGradient}
-      >
+      <View style={[
+        styles.buttonInner,
+        item === '=' ? styles.equalButtonInner : null
+      ]}>
         <Text style={styles.buttonText}>{item}</Text>
-      </LinearGradient>
+      </View>
     </TouchableOpacity>
-  );
+  ), [handleCalculate, handleClear, handlePress]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -62,10 +58,16 @@ const ResponsiveCalculator = () => {
         <Text style={styles.display}>{display}</Text>
       </View>
       <View style={styles.buttonContainer}>
-        {buttons.map(renderButton)}
+        {BUTTONS.map(renderButton)}
       </View>
     </SafeAreaView>
   );
+};
+
+const buttonBaseStyle = {
+  justifyContent: 'center',
+  alignItems: 'center',
+  borderRadius: 15,
 };
 
 const styles = StyleSheet.create({
@@ -100,12 +102,6 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     margin: '1%',
   },
-  buttonGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 15,
-  },
   buttonText: {
     fontSize: 24,
     color: '#FFFFFF',
@@ -116,6 +112,15 @@ const styles = StyleSheet.create({
   clearButton: {
     backgroundColor: '#FF3B30',
   },
+  buttonInner: {
+    ...buttonBaseStyle,
+    flex: 1,
+    backgroundColor: '#3a3a3c',
+  },
+  equalButtonInner: {
+    ...buttonBaseStyle,
+    backgroundColor: '#4a90e2',
+  },
 });
 
-export default ResponsiveCalculator;
+export default React.memo(ResponsiveCalculator);

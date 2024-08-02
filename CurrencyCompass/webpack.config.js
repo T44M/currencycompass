@@ -1,53 +1,55 @@
 const createExpoWebpackConfigAsync = require('@expo/webpack-config');
-const ImageMinimizerPlugin = require('image-minimizer-webpack-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const path = require('path');
 
-module.exports = async function(env, argv) {
+module.exports = async function (env, argv) {
   const config = await createExpoWebpackConfigAsync({
     ...env,
     babel: {
       dangerouslyAddModulePathsToTranspile: ['@expo/vector-icons']
     }
   }, argv);
-  
-  config.resolve.alias = {
-    ...config.resolve.alias,
-    'react-native$': 'react-native-web',
+
+  // Resolve設定
+  config.resolve = {
+    ...config.resolve,
+    alias: {
+      ...config.resolve.alias,
+      'crypto': require.resolve('crypto-browserify'),
+      'stream': require.resolve('stream-browserify'),
+      'path': require.resolve('path-browserify'),
+      'fs': false,
+      './polyfills': path.resolve(__dirname, 'src/polyfills.js'),
+      'react-native-get-random-values': path.resolve(__dirname, 'node_modules/react-native-get-random-values/index.web.js'),
+    },
+    fallback: {
+      ...config.resolve.fallback,
+      'vm': require.resolve('vm-browserify')
+    }
   };
 
-  config.resolve.fallback = {
-    ...config.resolve.fallback,
-    "crypto": require.resolve("crypto-browserify"),
-    "stream": require.resolve("stream-browserify"),
-    "path": require.resolve("path-browserify"),
-    "fs": false,
-    "vm": require.resolve("vm-browserify")
-  };
-
+  // 最適化設定
   config.optimization = {
     ...config.optimization,
     usedExports: true,
+    minimize: true,
+    splitChunks: {
+      chunks: 'all',
+      minSize: 20000,
+      maxSize: 244000,
+    },
   };
 
-  config.optimization.minimizer.push(
-    new ImageMinimizerPlugin({
-      minimizer: {
-        implementation: ImageMinimizerPlugin.imageminMinify,
-        options: {
-          plugins: [
-            ['gifsicle', { interlaced: true }],
-            ['jpegtran', { progressive: true }],
-            ['optipng', { optimizationLevel: 5 }],
-            ['svgo', { plugins: [{ removeViewBox: false }] }],
-          ],
-        },
-      },
-    })
-  );
-
-  // バンドル分析ツールを追加（本番ビルド時のみ）
-  if (env.mode === 'production') {
-    config.plugins.push(new BundleAnalyzerPlugin());
+  // Analyzerプラグイン設定
+  if (process.env.ANALYZE === 'true') {
+    config.plugins.push(
+      new BundleAnalyzerPlugin({
+        analyzerMode: 'static',
+        reportFilename: 'report.html',
+        generateStatsFile: true,
+        statsFilename: 'stats.json',
+      })
+    );
   }
 
   return config;

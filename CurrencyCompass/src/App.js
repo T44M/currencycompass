@@ -7,7 +7,7 @@ import i18n from './i18n';
 import { FavoritesProvider } from './FavoritesContext';
 import { getApp } from 'firebase/app';
 import './firebaseConfig';
-import 'react-native-get-random-values';
+import './polyfills';
 import Loading from './components/Loading';
 
 const CurrencyConverter = lazy(() => import('./components/CurrencyConverter'));
@@ -29,7 +29,6 @@ const App = () => {
             screenOptions={({ route }) => ({
               tabBarIcon: ({ focused, color, size }) => {
                 let iconName;
-
                 if (route.name === 'Convert') {
                   iconName = focused ? 'swap-horizontal' : 'swap-horizontal-outline';
                 } else if (route.name === 'Calculator') {
@@ -37,7 +36,6 @@ const App = () => {
                 } else if (route.name === 'Favorites') {
                   iconName = focused ? 'star' : 'star-outline';
                 }
-
                 return <Ionicons name={iconName} size={size} color={color} />;
               },
               tabBarActiveTintColor: '#007AFF',
